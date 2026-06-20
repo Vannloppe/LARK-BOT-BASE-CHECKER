@@ -1,5 +1,9 @@
+from email import message
+
 import requests
 import os
+import json
+
 from dotenv import load_dotenv
 
 load_dotenv()  # loads your .env file so os.getenv() can read it
@@ -25,24 +29,37 @@ def get_access_token():
     return data["tenant_access_token"]           # return just the token string
 
 
-def read_sheet(spreadsheet_token, sheet_id, range):
+def read_base_records(app_token, table_id):
     """
-    Reads data from a specific range in your Lark Sheet.
-    range example: "A1:D10" (like Excel/Google Sheets)
+    Reads records from a Lark Base table.
+    This is different from Sheets — Base returns 'records' not 'rows'
+    Each record has a 'fields' object containing all your column values
     """
     token = get_access_token()
-    
-    url = f"https://open.larksuite.com/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/values/{sheet_id}!{range}"
-    
-    headers = {
-        "Authorization": f"Bearer {token}"  # tells Lark "hey, I'm logged in"
-    }
-    
-    response = requests.get(url, headers=headers)
-    data = response.json()
-    
-    return data["data"]["valueRange"]["values"]  # returns a list of rows
 
+    url = f"https://open.larksuite.com/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records"
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    # you can filter, sort, or limit records here
+    params = {
+        "page_size": 100,
+        "field_names": '["Email Title / Task and Meegle ticket", "Status", "Remarks"]',
+        "with_shared_url": "false",
+        "automatic_fields": "true"
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+    data = response.json()
+
+    print(f"API Response: {data}")  # helpful for debugging
+
+    if data.get("code") != 0:
+        raise Exception(f"Lark Base API error: {data.get('msg')}")
+
+    return data["data"]["items"]  # returns list of records
 
 def send_message(chat_id, message):
     """
@@ -57,10 +74,13 @@ def send_message(chat_id, message):
         "Content-Type": "application/json"
     }
     
+    content = json.dumps({"text": message})
+    print(f"DEBUG content: {content}")  # ← see exactly what's being sent
+
     payload = {
         "receive_id": chat_id,
         "msg_type": "text",
-        "content": f'{{"text": "{message}"}}'  # Lark requires this exact format
+        "content": content
     }
     
     params = {"receive_id_type": "chat_id"}  # tells Lark the ID is a group chat

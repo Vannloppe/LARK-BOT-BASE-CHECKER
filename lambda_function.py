@@ -1,37 +1,62 @@
 import os
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
-from lark_client import read_sheet, send_message
+from lark_client import read_base_records, send_message
 
 load_dotenv()
 
-SPREADSHEET_TOKEN = os.getenv("LARK_SPREADSHEET_TOKEN")
-CHAT_ID = os.getenv("LARK_CHAT_ID")
+APP_TOKEN = os.getenv("LARK_BASE_APP_TOKEN")
+TABLE_ID  = os.getenv("LARK_BASE_TABLE_ID")
+CHAT_ID   = os.getenv("LARK_CHAT_ID")
 
 def lambda_handler(event, context):
-    """
-    AWS Lambda calls THIS function automatically.
-    - event: data passed in when Lambda is triggered (we don't need it for scheduled runs)
-    - context: AWS runtime info (we don't need it either, but it must be in the signature)
-    """
     try:
-        # Read rows A1 to D50 from your sheet
-        rows = read_sheet(SPREADSHEET_TOKEN, "Sheet1", "A1:D50")
-        
-        # Example: check if any row has a "PENDING" status in column 3
-        alerts = []
-        for row in rows:
-            if len(row) >= 3 and row[2] == "PENDING":
-                alerts.append(f"⚠️ Pending item found: {row[0]}")  # row[0] = column A
-        
+        records       = read_base_records(APP_TOKEN, TABLE_ID)
+        eight_hrs_ago = datetime.now(tz=timezone.utc) - timedelta(hours=8)
+        alerts        = []
+
+        for record in records:
+            record_fields = record.get("fields", {})  # ← .get() not ()
+            modified_time = record.get("last_modified_time")
+
+            # skip completely empty records
+            if not record_fields:
+                continue
+
+            task    = record_fields.get("Email Title / Task and Meegle ticket")
+            status  = record_fields.get("Status")
+            remarks = record_fields.get("Remarks")
+
+            # skip if both task and remarks are missing
+            if not task and not remarks:
+                continue
+
+             # skip if status is closed or done
+            if status in ["Case Closed", "Done"]:
+                continue
+
+            if modified_time:
+                modified_dt = datetime.fromtimestamp(modified_time / 1000, tz=timezone.utc)
+
+                if modified_dt < eight_hrs_ago:  # ← indented under if modified_time
+                    alerts.append(
+                        f"🔔 Record needs update!\n"
+                        f"Task: {task}\n"
+                        f"Status: {status}\n"
+                        f"Remarks: {remarks}\n"
+                        f"Last updated: {modified_dt.strftime('%Y-%m-%d %H:%M UTC')}"
+                    )
+
         if alerts:
-            message = "\n".join(alerts)  # join all alerts into one message
+            message = "\n\n".join(alerts)  # ← double newline so each alert is separated
             send_message(CHAT_ID, message)
-            print(f"Sent alert with {len(alerts)} items")
+            print(f"Sent {len(alerts)} alerts")
         else:
-            print("No pending items. No alert sent.")
-        
-        return {"statusCode": 200, "body": "Bot ran successfully"}
-    
+            print("No records need updating")
+            send_message(os.getenv("LARK_CHAT_ID"), "✅ No records need updating in the last 8 hours.")
+
+        return {"statusCode": 200, "body": "Success"}
+
     except Exception as e:
         print(f"ERROR: {str(e)}")
         return {"statusCode": 500, "body": str(e)}
