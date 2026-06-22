@@ -1,3 +1,4 @@
+from operator import mod
 import os
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
@@ -33,56 +34,56 @@ def lambda_handler(event, context):
 
             
         # debug — print first record's exact field names
-        if records:
-            first = records[0].get("fields", {})
+            if records:
+                first = records[0].get("fields", {})
 
-        for record in records:
-            record_fields = record.get("fields", {})
-            modified_time = record.get("last_modified_time")
+            for record in records:
+                record_fields = record.get("fields", {})
+                modified_time = record.get("last_modified_time")
             
         
-            # skip completely empty records
-            if not record_fields:
-                continue
+                # skip completely empty records
+                if not record_fields:
+                    continue
             
-            task    = record_fields.get("Email Title / Task and Meegle ticket")
-            status  = record_fields.get("Status")
-            remarks = record_fields.get("Remarks")
+                task    = record_fields.get("Email Title / Task and Meegle ticket")
+                status  = record_fields.get("Status")
+                remarks = record_fields.get("Remarks")
             
             # skip if both task and remarks are missing
-            if not task and not remarks:
-                continue
+                if not task and not remarks:
+                    continue
 
             # skip if status is closed or done
-            if status in ["Case Closed", "Done","Assigned to DEV/PO"]:
-                continue
+                if status in ["Case Closed", "Done","Assigned to DEV/PO","P. Player"]:
+                    continue
 
-            if task in ["DO NOT REMOVE"]:
-                continue
+                if task in ["DO NOT REMOVE"]:
+                    continue
 
-            print(f"DEBUG task: {task}, status: {status}, remarks: {remarks}, modified_time: {modified_time}")
+            #print(f"DEBUG task: {task}, status: {status}, remarks: {remarks}, modified_time: {modified_time}")
 
-            if modified_time:
-                modified_dt = datetime.fromtimestamp(modified_time / 1000, tz=timezone.utc)
+                if modified_time:
+                    modified_dt = datetime.fromtimestamp(modified_time / 1000, tz=timezone.utc)
                 
-                print(f"Current UTC Time: {datetime.now(timezone.utc)}")
-                print(f"Cutoff Time:      {eight_hrs_ago}")
-                print(f"Modified Time:    {modified_dt}")
-                print(f"Comparison:       {modified_dt < eight_hrs_ago}")
+                    print(f"Current UTC Time: {datetime.now(timezone.utc)}")
+                    print(f"Cutoff Time:      {eight_hrs_ago}")
+                    print(f"Modified Time:    {modified_dt}")
+                    print(f"Comparison:       {modified_dt < eight_hrs_ago}")
                 
                 
                 
-                if modified_dt < eight_hrs_ago:
-                    alerts.append(
-                        f"===============================\n"
-                        f"🔔 Record needs update!\n"
-                        f"Table: {table['name']}\n"
-                        f"Task: {task}\n"
-                        f"Status: {status}\n"
-                        f"Remarks: {remarks}\n"
-                        f"Last updated: {modified_dt.strftime('%Y-%m-%d %H:%M UTC')}"
-                        f"\n==============================="
-                    )
+                    if modified_dt < eight_hrs_ago:
+                        alerts.append(
+                            f"===============================\n"
+                            f"🔔 Record needs update!\n"
+                            f"Table: {table['name']}\n"
+                            f"Task: {task}\n"
+                            f"Status: {status}\n"
+                            f"Remarks: {remarks}\n"
+                            f"Last updated: {modified_dt.strftime('%Y-%m-%d %H:%M UTC')}"
+                            f"\n==============================="
+                        )
 
         if alerts:
             message = "\n\n".join(alerts)  # ← double newline so each alert is separated
