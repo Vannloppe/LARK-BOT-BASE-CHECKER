@@ -1,41 +1,52 @@
 pipeline {
-    agent any  // run on any available Jenkins server
+    agent any
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/YOUR_USERNAME/lark-bot.git'
-                // pulls the latest code from GitHub
+                git branch: 'main',
+                    url: 'https://github.com/YOUR_USERNAME/lark-bot.git'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'pip install -r requirements.txt -t ./package'
-                // installs libraries INTO a folder called "package"
-                // "-t ./package" = target directory (needed for Lambda packaging)
+                sh '''
+                    rm -rf package
+                    mkdir package
+                    pip3 install requests python-dotenv -t ./package
+                '''
             }
         }
 
         stage('Package') {
             steps {
-                sh 'cp *.py ./package/'          // copy your .py files into package/
-                sh 'cd package && zip -r ../lark-bot.zip .'  // zip everything
-                // AWS Lambda needs a .zip file to deploy
+                sh '''
+                    cp lambda_function.py ./package/
+                    cp lark_client.py ./package/
+                    cd package && zip -r ../lark-bot.zip .
+                '''
             }
         }
 
         stage('Deploy to Lambda') {
             steps {
                 sh '''
-                aws lambda update-function-code \
-                    --function-name lark-bot \
-                    --zip-file fileb://lark-bot.zip \
-                    --region ap-southeast-1
+                    aws lambda update-function-code \
+                        --function-name lark-bot \
+                        --zip-file fileb://lark-bot.zip \
+                        --region ap-southeast-1
                 '''
-                // uploads the zip to AWS Lambda
-                // --region: use whatever region your Lambda is in
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployed to Lambda successfully!'
+        }
+        failure {
+            echo '❌ Deployment failed — check logs above'
         }
     }
 }
