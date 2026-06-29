@@ -5,7 +5,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/YOUR_USERNAME/lark-bot.git'
+                    url: 'https://github.com/Vannloppe/LARK-BOT-BASE-CHECKER.git'
             }
         }
 
