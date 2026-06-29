@@ -24,7 +24,7 @@ A scheduled bot that monitors Lark Base tables and sends alerts to a Lark group 
 
 This bot reads records from two Lark Base tables and checks when each record was last modified. If a record has not been updated in the last 8 hours and its status is not `Case Closed` or `Done`, the bot sends an alert to a designated Lark group chat.
 
-The bot runs automatically twice a day — 9AM and 9PM Manila time (UTC+8) — triggered by AWS EventBridge.
+The bot runs automatically twice a day — 6AM and 6PM Manila time (UTC+8) — triggered by AWS EventBridge.
 
 ---
 
