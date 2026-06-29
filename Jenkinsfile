@@ -33,7 +33,7 @@ pipeline {
             steps {
                 sh '''
                     aws lambda update-function-code \
-                        --function-name lark-bot \
+                        --function-name Lark-remark-checker \
                         --zip-file fileb://lark-bot.zip \
                         --region ap-southeast-1
                 '''
