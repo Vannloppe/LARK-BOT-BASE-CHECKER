@@ -48,7 +48,7 @@ GitHub (source code)
 EC2 (Jenkins server)
     ↓  builds and deploys
 AWS Lambda (lark-bot function)
-    ↓  triggered by EventBridge (9AM and 9PM Manila)
+    ↓  triggered by EventBridge (6AM and 6PM Manila)
 Lark Base (reads records)
     ↓  sends alerts
 Lark Group Chat
@@ -180,8 +180,8 @@ Memory:  256 MB
 
 ```
 Lambda → Add Trigger → EventBridge
-Schedule: cron(0 1 * * ? *)    # 9AM Manila (1AM UTC)
-Schedule: cron(0 13 * * ? *)   # 9PM Manila (1PM UTC)
+Schedule: cron(0 22 * * ? *)    # 6AM Manila (UTC)
+Schedule: cron(0 10 * * ? *)   # 6PM Manila (UTC)
 ```
 
 ### 5. Attach IAM Role
